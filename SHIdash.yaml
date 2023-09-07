@@ -1,0 +1,196 @@
+esphome:
+  name: esphome-web-xxxxx
+  friendly_name: ESPHome Web xxxxx
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "yourapi"
+
+ota:
+
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esphome-Web-xxxxx"
+    password: "pw"
+
+
+# Pins for Waveshare ePaper ESP Board
+spi:
+  clk_pin: GPIO13
+  mosi_pin: GPIO14
+
+# Fonts (pixel font)
+font:
+  - file: "pixelf.ttf"
+    id: pixelxl
+    size: 90
+
+  - file: "pixelf.ttf"
+    id: pixell
+    size: 50
+
+  - file: "pixelf.ttf"
+    id: pixelmni
+    size: 20
+
+  - file: "pixelf.ttf"
+    id: pixels
+    size: 30
+
+  - file: "pixelf.ttf"
+    id: pixeltiny
+    size: 8
+
+  - file: "Wavefont-Medium.ttf"
+    id: wave
+    size: 67
+
+button:
+  - platform: template
+    name: "ESP32 eink Refresh Screen"
+    entity_category: config
+    on_press:
+      - component.update: eink_display
+
+# All sensor data
+text_sensor:
+  - platform: homeassistant
+    entity_id: sensor.openweathermap2_weather 
+    id: var_cond
+
+  - platform: homeassistant
+    entity_id: sensor.preciplist
+    id: p_list
+
+  - platform: homeassistant
+    entity_id: sensor.precipclist
+    id: pc_list
+
+time:
+  - platform: homeassistant
+    id: esptime
+
+sensor:
+  - platform: homeassistant
+    entity_id: sensor.commute_time
+    id: var_commute
+  - platform: homeassistant
+    entity_id: sensor.basement_radon
+    id: var_radon
+  - platform: homeassistant
+    entity_id: sensor.openweathermap_humidity
+    id: var_currhum
+  - platform: homeassistant
+    entity_id: sensor.openweathermap_temperature 
+    id: var_currtemp
+  - platform: homeassistant
+    entity_id: sensor.robot_waste_drawer 
+    id: var_litterwaste
+  - platform: homeassistant
+    entity_id: sensor.small_living_room_temperature 
+    id: var_sltemp
+  - platform: homeassistant
+    entity_id: sensor.large_living_room_temperature 
+    id: var_lltemp
+  - platform: homeassistant
+    entity_id: sensor.basement_temperature 
+    id: var_bstemp
+  - platform: homeassistant
+    entity_id: sensor.openweathermap2_weather_code
+    id: var_code
+
+image:
+  - file: "shi_bg.png"
+    id: bg_shi
+    resize: 800x480
+
+  - file: mdi:moon-full
+    id: clear
+    resize: 80x80
+
+  - file: mdi:cloud
+    id: cloud
+    resize: 80x80
+
+  - file: mdi:weather-rainy
+    id: rain
+    resize: 80x80
+
+  - file: mdi:weather-snowy
+    id: snow
+    resize: 80x80
+
+  - file: mdi:weather-fog
+    id: fog
+    resize: 80x80
+
+  - file: mdi:weather-pouring
+    id: heavyrain
+    resize: 80x80
+
+  - file: mdi:weather-lightning
+    id: tstorm
+    resize: 80x80
+
+# display all images/sensors/text_sensors
+display:
+  - platform: waveshare_epaper
+    id: eink_display
+    cs_pin: GPIO15
+    dc_pin: GPIO27
+    busy_pin: GPIO25
+    reset_pin: GPIO26
+    reset_duration: 2ms
+    model: 7.50inV2
+    update_interval: 30min
+    lambda: |-
+      float radon_pci = id(var_radon).state/37;
+      it.image(0,0,id(bg_shi));
+      it.printf(255, 100, id(pixelxl), "%2.0f", id(var_currtemp).state);
+      it.printf(309, 185, id(pixell), "%2.0f", id(var_currhum).state);
+      it.printf(130, 200, id(pixelmni), TextAlign::TOP_CENTER, "%s", id(var_cond).state.c_str());
+      it.strftime(33, 444, id(pixeltiny), TextAlign::BASELINE_LEFT, "Last update... %b %d %H.%M", id(esptime).now());
+
+      int wcode = id(var_code).state; 
+      if (wcode==800){
+        it.image(93, 104, id(clear));}
+      if (wcode>=600 and wcode<=699){
+        it.image(93, 104, id(snow));}
+      if (wcode>=801){
+        it.image(93, 104, id(cloud));}
+      if (wcode>=701 and wcode<=799){
+        it.image(93, 104, id(fog));}
+      if (wcode>=500 and wcode<=599){
+        it.image(93, 104, id(heavyrain));}
+      if (wcode>=300 and wcode<=399){
+        it.image(93, 104, id(rain));}
+      if (wcode>=200 and wcode<=299){
+        it.image(93, 104, id(tstorm));}
+      
+      it.printf(115, 424, id(wave), TextAlign::BASELINE_LEFT, id(p_list).state.c_str());
+      it.printf(115, 339, id(wave), TextAlign::BASELINE_LEFT, id(pc_list).state.c_str());
+
+      it.printf(724, 136, id(pixels), "%2.1f", radon_pci);
+      it.printf(724, 105, id(pixels), "%2.0f", id(var_bstemp).state);
+      it.printf(724, 74, id(pixels), "%2.0f", id(var_sltemp).state);
+      it.printf(724, 43, id(pixels), "%2.0f", id(var_lltemp).state);
+
+      it.printf(649, 257, id(pixels), "%2.0f", id(var_commute).state);
+
+      it.printf(688, 400, id(pixels), "%2.0f", id(var_litterwaste).state);
+
+captive_portal:
